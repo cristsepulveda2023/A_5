@@ -64,8 +64,5 @@ de cargar los datos.
 - La experiencia potencial casi no se asocia al ingreso (r = −0,09).
 - Son asociaciones descriptivas en una muestra pequeña, no relaciones causales.
 
-## Declaración de autoría y uso de IA
-- Herramienta utilizada: Claude (Claude Code)
-- Para qué la usé: escribir el do-file completo a partir del enunciado y de los guiones de la Semana 12, correrlo en Stata 16 para generar el `.log`, redactar la interpretación y este README.
-- Qué hice yo: ____ (completar: qué revisaste, cambiaste o corriste tú)
-- Verificación: confirmo que entiendo y puedo explicar todo lo que entrego.
+
+
