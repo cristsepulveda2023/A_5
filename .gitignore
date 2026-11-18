@@ -1,0 +1,4 @@
+# Archivos temporales de Stata
+*.tmp
+# Log suelto si se corre desde scripts/
+scripts/output/

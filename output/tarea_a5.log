@@ -1,0 +1,290 @@
+-------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\Crist\Downloads\Fundamentos de programación de análisis e
+> conómico\Semana_12\A_5\output/tarea_a5.log
+  log type:  text
+ opened on:  17 Nov 2026, 21:03:41
+
+. 
+. 
+. * --- 2. Cargar los datos -------------------------------------
+. * encoding("utf-8"): sin esto, con version 14, "Ñuble" y "Construcción" se le
+> en mal.
+. import delimited "data/raw/casen_reducido.csv", clear varnames(1) encoding("u
+> tf-8")
+(6 vars, 60 obs)
+
+. describe
+
+Contains data
+  obs:            60                          
+ vars:             6                          
+-------------------------------------------------------------------------------
+              storage   display    value
+variable name   type    format     label      variable label
+-------------------------------------------------------------------------------
+region          str13   %13s                  
+sector          str13   %13s                  
+educ            byte    %8.0g                 
+edad            byte    %8.0g                 
+ingreso         long    %12.0g                
+genero          str1    %9s                   
+-------------------------------------------------------------------------------
+Sorted by: 
+     Note: Dataset has changed since last saved.
+
+. summarize
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      region |          0
+      sector |          0
+        educ |         60    12.73333    3.328697          6         20
+        edad |         60    44.51667    15.15959         20         70
+     ingreso |         55    655290.9    209912.4     180000    1093000
+-------------+---------------------------------------------------------
+      genero |          0
+
+. 
+. 
+. * --- 3. Crear variables con generate y replace ---------------
+. * Experiencia potencial de Mincer: años desde que dejó de estudiar (6 = edad 
+> de entrada al colegio).
+. * max(..., 0) evita experiencias negativas.
+. generate experiencia = max(edad - educ - 6, 0)
+
+. 
+. * Indicadora de educación superior: 13 o más años de estudio.
+. * El "if !missing(educ)" evita que un missing en educ se cuente como 1 (el . 
+> es mayor que 13).
+. generate alta_educ = (educ >= 13) if !missing(educ)
+
+. 
+. * Indicadora de mujer, en dos pasos: generate crea, replace modifica.
+. generate mujer = 0
+
+. replace  mujer = 1 if genero == "F"
+(29 real changes made)
+
+. 
+. * Indicadora de pobreza (umbral del curso: $216.000). Sin ingreso = sin dato,
+>  no "no pobre".
+. generate pobre = (ingreso < 216000) if !missing(ingreso)
+(5 missing values generated)
+
+. 
+. 
+. * --- 4. Etiquetas ---------------------------------------------
+. label variable experiencia "Experiencia potencial (años)"
+
+. label variable alta_educ   "Educación superior (13+ años)"
+
+. label variable mujer       "Mujer"
+
+. label variable pobre       "Bajo la línea de pobreza ($216.000)"
+
+. label variable ingreso     "Ingreso mensual ($)"
+
+. 
+. * Etiquetas de valores: el dato sigue siendo 0/1, pero las tablas muestran el
+>  nombre.
+. label define sino_lbl  0 "No" 1 "Sí"
+
+. label define mujer_lbl 0 "Hombre" 1 "Mujer"
+
+. label values alta_educ sino_lbl
+
+. label values pobre     sino_lbl
+
+. label values mujer     mujer_lbl
+
+. 
+. * Categórica numérica desde texto (como factor() en R), para tablas y regresi
+> ones.
+. encode sector, generate(sector_n)
+
+. 
+. * Niveles educativos agrupados (como case_when() en R).
+. recode educ (0/8 = 1 "Básica") (9/12 = 2 "Media") (13/max = 3 "Superior"), //
+> /
+>     generate(nivel_educ)
+(60 differences between educ and nivel_educ)
+
+. label variable nivel_educ "Nivel educativo"
+
+. 
+. 
+. * --- 5. Cuidado con los missing -------------------------------
+. count if missing(ingreso)
+  5
+
+. count if ingreso > 500000
+  46
+
+. count if ingreso > 500000 & !missing(ingreso)
+  41
+
+. 
+. * ¿Por qué summarize no se equivoca y count if sí?
+. *   summarize calcula solo con los valores observados: deja fuera los missing
+. *   (por eso Obs = 55 y no 60). En cambio, en una comparación como
+. *   "ingreso > 500000", Stata trata el missing (.) como un número MAYOR que
+. *   cualquier otro, así que las 5 personas sin ingreso cuentan como "altas"
+. *   (46 en vez de 41). Toda condición con > o >= sobre una variable con
+. *   missing debe llevar & !missing(variable).
+. 
+. 
+. * --- 6. Descriptivos ------------------------------------------
+. summarize ingreso educ edad experiencia
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+     ingreso |         55    655290.9    209912.4     180000    1093000
+        educ |         60    12.73333    3.328697          6         20
+        edad |         60    44.51667    15.15959         20         70
+ experiencia |         60    25.78333     15.3182          0         53
+
+. 
+. * Frecuencias de una categórica
+. tabulate sector
+
+       sector |      Freq.     Percent        Cum.
+--------------+-----------------------------------
+  Agricultura |         13       21.67       21.67
+     Comercio |          6       10.00       31.67
+ Construcción |          5        8.33       40.00
+    Educación |          8       13.33       53.33
+    Industria |         11       18.33       71.67
+    Servicios |         17       28.33      100.00
+--------------+-----------------------------------
+        Total |         60      100.00
+
+. 
+. * Tabla cruzada con porcentajes por fila
+. tabulate mujer alta_educ, row
+
++----------------+
+| Key            |
+|----------------|
+|   frequency    |
+| row percentage |
++----------------+
+
+           |  Educación superior
+           |      (13+ años)
+     Mujer |        No         Sí |     Total
+-----------+----------------------+----------
+    Hombre |        15         16 |        31 
+           |     48.39      51.61 |    100.00 
+-----------+----------------------+----------
+     Mujer |        15         14 |        29 
+           |     51.72      48.28 |    100.00 
+-----------+----------------------+----------
+     Total |        30         30 |        60 
+           |     50.00      50.00 |    100.00 
+
+. 
+. * Ingreso medio por nivel educativo y por sector (group_by + summarise en R)
+. tabstat ingreso, by(nivel_educ) stat(mean sd n)
+
+Summary for variables: ingreso
+     by categories of: nivel_educ (Nivel educativo)
+
+nivel_educ |      mean        sd         N
+-----------+------------------------------
+    Básica |    354400  107490.9         5
+     Media |  576739.1  159683.3        23
+  Superior |  777925.9  172266.1        27
+-----------+------------------------------
+     Total |  655290.9  209912.4        55
+------------------------------------------
+
+. tabstat ingreso, by(sector) stat(mean sd n)
+
+Summary for variables: ingreso
+     by categories of: sector 
+
+       sector |      mean        sd         N
+--------------+------------------------------
+  Agricultura |  447846.2  156716.2        13
+     Comercio |  523833.3  135666.4         6
+ Construcción |    520800  115694.4         5
+    Educación |  908857.1  117920.1         7
+    Industria |  697888.9  154652.4         9
+    Servicios |    788600  112702.4        15
+--------------+------------------------------
+        Total |  655290.9  209912.4        55
+---------------------------------------------
+
+. 
+. * summarize ... if por grupo
+. summarize ingreso if mujer == 1
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+     ingreso |         27    636296.3    224593.3     180000    1093000
+
+. summarize ingreso if mujer == 0
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+     ingreso |         28    673607.1    197088.3     226000     987000
+
+. 
+. * Correlación (solo filas completas en las tres variables)
+. correlate ingreso educ experiencia
+(obs=55)
+
+             |  ingreso     educ experi~a
+-------------+---------------------------
+     ingreso |   1.0000
+        educ |   0.6767   1.0000
+ experiencia |  -0.0875  -0.1171   1.0000
+
+
+. 
+. * Guardar resultados con scalar ANTES de que r() se sobrescriba con el siguie
+> nte comando
+. summarize ingreso if alta_educ == 1
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+     ingreso |         27    777925.9    172266.1     388000    1093000
+
+. scalar media_alta = r(mean)
+
+. summarize ingreso if alta_educ == 0
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+     ingreso |         28    537035.7    173229.1     180000     824000
+
+. scalar media_baja = r(mean)
+
+. display "Ingreso medio, 13+ años de educación: " %9.0fc media_alta
+Ingreso medio, 13+ años de educación:   777,926
+
+. display "Ingreso medio, menos de 13 años:      " %9.0fc media_baja
+Ingreso medio, menos de 13 años:        537,036
+
+. display "Diferencia:                           " %9.0fc media_alta - media_ba
+> ja
+Diferencia:                             240,890
+
+. 
+. * Guardar la base limpia para la Semana 13
+. capture mkdir "data/processed"
+
+. save "data/processed/casen_limpio.dta", replace
+file data/processed/casen_limpio.dta saved
+
+. 
+. 
+. * --- 7. Cerrar la bitácora -------------------------------------
+. log close
+      name:  <unnamed>
+       log:  C:\Users\Crist\Downloads\Fundamentos de programación de análisis e
+> conómico\Semana_12\A_5\output/tarea_a5.log
+  log type:  text
+ closed on:  17 Nov 2026, 21:03:41
+-------------------------------------------------------------------------------
